@@ -1,0 +1,102 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ================================================= -->
+    <!-- 음성 대화 훈련 / STT 마이크 권한 -->
+    <!-- ================================================= -->
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <application
+        android:label="s_tap"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher">
+
+        <!-- ================================================= -->
+        <!-- S-TAP 메인 Activity -->
+        <!-- ================================================= -->
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+
+            <!--
+                Flutter 시작 시 적용되는 기본 Theme
+            -->
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+
+            <!-- 앱 실행 -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- ================================================= -->
+            <!-- S-TAP 로그인 Deep Link -->
+            <!-- stap://login-callback -->
+            <!-- ================================================= -->
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="stap"
+                    android:host="login-callback" />
+            </intent-filter>
+
+        </activity>
+
+        <!-- ================================================= -->
+        <!-- image_cropper -->
+        <!-- 프로필 이미지 1:1 크롭 화면 -->
+        <!-- ================================================= -->
+
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+
+        <!--
+            Flutter Plugin 등록용
+            삭제하면 안 됨
+        -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+
+    </application>
+
+    <!-- ================================================= -->
+    <!-- Android에서 음성 인식 서비스 검색 허용 -->
+    <!-- speech_to_text 사용 -->
+    <!-- ================================================= -->
+
+    <queries>
+
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+
+        <!--
+            Required to query activities that can process text.
+            Flutter ProcessTextPlugin에서 사용.
+        -->
+
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
+        </intent>
+
+    </queries>
+
+</manifest>
