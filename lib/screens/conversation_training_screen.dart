@@ -1,12 +1,14 @@
+
 import 'package:flutter/material.dart';
 
-import 'voice_conversation_screen.dart';
+import 'ai_conversation_screen.dart';
 
 class ConversationTrainingScreen extends StatelessWidget {
   const ConversationTrainingScreen({super.key});
 
   static const Color primaryColor = Color(0xFF00A87E);
   static const Color backgroundColor = Color(0xFFF5FFFB);
+  static const Color textColor = Color(0xFF151918);
 
   @override
   Widget build(BuildContext context) {
@@ -17,117 +19,116 @@ class ConversationTrainingScreen extends StatelessWidget {
         surfaceTintColor: backgroundColor,
         elevation: 0,
         title: const Text(
-          '대화 훈련',
+          'AI와 대화하기',
           style: TextStyle(
             fontWeight: FontWeight.w900,
-            color: Color(0xFF151918),
+            color: textColor,
           ),
         ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 30),
+          padding: const EdgeInsets.fromLTRB(
+            20, 12, 20, 30,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                '어떤 상황을 연습해볼까요?',
+                '오늘은 어떤 이야기를\n나누고 싶나요?',
                 style: TextStyle(
                   fontSize: 25,
+                  height: 1.35,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF151918),
+                  color: textColor,
                 ),
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
 
               Text(
-                '부담되지 않는 상황부터 천천히 시작해봐요.',
+                '정해진 답은 없어요. 마음이 가는 주제부터\n'
+                '편안하게 이야기해 보세요.',
                 style: TextStyle(
                   fontSize: 14,
-                  height: 1.5,
+                  height: 1.55,
                   color: Colors.grey.shade600,
                 ),
               ),
 
               const SizedBox(height: 26),
 
-              // ==================================================
-              // 카페
-              // ==================================================
-              _buildTrainingCard(
+              _buildConversationCard(
                 context,
-                icon: Icons.local_cafe_outlined,
-                title: '카페',
-                description: '직원에게 음료를 주문하는 상황을 연습해요.',
-                difficultyLabel: '가볍게 시작하기',
-
-                scenarioCode: 'cafe_order',
-                scenarioTitle: '카페에서 주문하기',
-                voiceDifficulty: '초급',
-                roleName: '직원',
-                firstAiMessage: '안녕하세요.\n주문 도와드릴까요?',
-                totalGoalSteps: 3,
+                domainCode: 'daily',
+                icon: Icons.wb_sunny_outlined,
+                title: '일상 대화',
+                description:
+                    '오늘 하루, 요즘 기분, 작은 고민을\n'
+                    '자유롭게 이야기해요.',
+                example: '예: 오늘 있었던 일, 요즘 드는 생각',
               ),
 
               const SizedBox(height: 14),
 
-              // ==================================================
-              // 편의점
-              // ==================================================
-              _buildTrainingCard(
+              _buildConversationCard(
                 context,
-                icon: Icons.shopping_cart_outlined,
-                title: '편의점',
-                description: '물건을 구매하고 필요한 말을 해보는 연습이에요.',
-                difficultyLabel: '가볍게 시작하기',
-
-                scenarioCode: 'convenience_store',
-                scenarioTitle: '편의점에서 구매하기',
-                voiceDifficulty: '초급',
-                roleName: '직원',
-                firstAiMessage: '안녕하세요.\n필요하신 거 있으세요?',
-                totalGoalSteps: 3,
+                domainCode: 'career',
+                icon: Icons.auto_stories_outlined,
+                title: '진로 대화',
+                description:
+                    '공부, 일, 앞으로의 방향에 대한\n'
+                    '생각을 함께 정리해요.',
+                example: '예: 하고 싶은 일, 미래에 대한 고민',
               ),
 
               const SizedBox(height: 14),
 
-              // ==================================================
-              // 병원
-              // ==================================================
-              _buildTrainingCard(
+              _buildConversationCard(
                 context,
-                icon: Icons.local_hospital_outlined,
-                title: '병원',
-                description: '접수하거나 필요한 내용을 설명하는 상황을 연습해요.',
-                difficultyLabel: '조금 도전해보기',
-
-                scenarioCode: 'hospital_reception',
-                scenarioTitle: '병원에서 접수하기',
-                voiceDifficulty: '초급',
-                roleName: '접수 직원',
-                firstAiMessage: '안녕하세요.\n어떤 일로 오셨을까요?',
-                totalGoalSteps: 3,
+                domainCode: 'hobby',
+                icon: Icons.palette_outlined,
+                title: '취미 대화',
+                description:
+                    '좋아하는 것과 관심 있는 활동을\n'
+                    '부담 없이 이야기해요.',
+                example: '예: 음악, 게임, 운동, 새로운 취미',
               ),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 25),
 
-              // ==================================================
-              // 지인과 대화
-              // ==================================================
-              _buildTrainingCard(
-                context,
-                icon: Icons.people_outline_rounded,
-                title: '지인과 대화',
-                description: '먼저 인사하고 간단한 대화를 이어가는 연습이에요.',
-                difficultyLabel: '조금 도전해보기',
-
-                scenarioCode: 'acquaintance_talk',
-                scenarioTitle: '지인과 대화하기',
-                voiceDifficulty: '초급',
-                roleName: '지인',
-                firstAiMessage: '안녕!\n오늘 하루는 어땠어?',
-                totalGoalSteps: 3,
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: primaryColor.withValues(
+                    alpha: 0.07,
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.favorite_border_rounded,
+                      color: primaryColor,
+                      size: 21,
+                    ),
+                    SizedBox(width: 11),
+                    Expanded(
+                      child: Text(
+                        '대화를 잘해야 할 필요는 없어요.\n'
+                        '내 속도에 맞춰 편하게 이야기해요.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.55,
+                          color: Color(0xFF347B68),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -137,118 +138,115 @@ class ConversationTrainingScreen extends StatelessWidget {
   }
 
   // ============================================================
-  // 훈련 카드
+  // 대화 주제 카드
   // ============================================================
 
-  Widget _buildTrainingCard(
+  Widget _buildConversationCard(
     BuildContext context, {
+    required String domainCode,
     required IconData icon,
     required String title,
     required String description,
-    required String difficultyLabel,
-
-    required String scenarioCode,
-    required String scenarioTitle,
-    required String voiceDifficulty,
-    required String roleName,
-    required String firstAiMessage,
-    required int totalGoalSteps,
+    required String example,
   }) {
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => VoiceConversationScreen(
-              scenarioCode: scenarioCode,
-              scenarioTitle: scenarioTitle,
-              difficulty: voiceDifficulty,
-              roleName: roleName,
-              firstAiMessage: firstAiMessage,
-              totalGoalSteps: totalGoalSteps,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AiConversationScreen(
+                domainCode: domainCode,
+                domainTitle: title,
+              ),
+            ),
+          );
+        },
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(19),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: const Color(0xFFE4E9E7),
             ),
           ),
-        );
-      },
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFE4E9E7)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 58,
-              height: 58,
-              decoration: BoxDecoration(
-                color: primaryColor.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(18),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: primaryColor.withValues(
+                    alpha: 0.10,
+                  ),
+                  borderRadius: BorderRadius.circular(17),
+                ),
+                child: Icon(
+                  icon,
+                  size: 27,
+                  color: primaryColor,
+                ),
               ),
-              child: Icon(icon, size: 29, color: primaryColor),
-            ),
 
-            const SizedBox(width: 16),
+              const SizedBox(width: 14),
 
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF151918),
-                    ),
-                  ),
-
-                  const SizedBox(height: 5),
-
-                  Text(
-                    description,
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      height: 1.5,
-                      color: Color(0xFF707572),
-                    ),
-                  ),
-
-                  const SizedBox(height: 9),
-
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: primaryColor.withValues(alpha: 0.09),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      difficultyLabel,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
                       style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
-                        color: primaryColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: textColor,
                       ),
                     ),
-                  ),
-                ],
+
+                    const SizedBox(height: 7),
+
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        height: 1.5,
+                        color: Color(0xFF707572),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Text(
+                      example,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        height: 1.4,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF347B68),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(width: 8),
+              const SizedBox(width: 5),
 
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 17,
-              color: primaryColor,
-            ),
-          ],
+              const Padding(
+                padding: EdgeInsets.only(top: 15),
+                child: Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: primaryColor,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
