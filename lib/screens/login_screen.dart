@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -162,7 +163,9 @@ class _LoginScreenState extends State<LoginScreen> {
               try {
                 await Supabase.instance.client.auth.resetPasswordForEmail(
                   email,
-                  redirectTo: 'stap://login-callback/',
+                  redirectTo: kIsWeb
+                      ? 'https://hwamong714.github.io/s-tap/'
+                      : 'stap://login-callback/',
                 );
 
                 if (!mounted) return;
@@ -466,7 +469,9 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await Supabase.instance.client.auth.signInWithOAuth(
         OAuthProvider.google,
-        redirectTo: 'stap://login-callback/',
+        redirectTo: kIsWeb
+            ? 'https://hwamong714.github.io/s-tap/'
+            : 'stap://login-callback/',
       );
     } catch (e) {
       if (!mounted) return;

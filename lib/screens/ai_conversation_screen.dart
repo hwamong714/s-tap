@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
@@ -17,6 +18,9 @@ import '../services/ai_conversation_storage_service.dart';
 // - TTS 음성 출력
 // - 대화 기록 저장 및 이어하기
 // - 새 대화 시작 및 기록 삭제
+//
+// 웹 TTS 속도: 1.0
+// Android / iOS 네이티브 TTS 속도: 0.46
 // ============================================================
 
 class AiConversationScreen extends StatefulWidget {
@@ -462,14 +466,18 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
                                   final confirmed =
                                       await _confirmDeleteConversation();
 
-                                  if (!confirmed) return;
+                                  if (!confirmed) {
+                                    return;
+                                  }
 
                                   try {
                                     await AiConversationStorageService.deleteSession(
                                       id,
                                     );
 
-                                    if (!mounted) return;
+                                    if (!mounted) {
+                                      return;
+                                    }
 
                                     if (_sessionId == id) {
                                       _sessionId = null;
@@ -563,10 +571,23 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
       debugPrint('STT 초기화 오류: $error');
     }
 
+    // ========================================================
+    // TTS 초기화
+    //
+    // 웹: 기본 속도에 가까운 1.0
+    // Android/iOS 네이티브: 기존 0.46 유지
+    //
+    // Chrome / 삼성 인터넷에서 음성이 지나치게
+    // 느리게 출력되는 현상 개선
+    // ========================================================
+
     try {
       await _tts.setLanguage('ko-KR');
-      await _tts.setSpeechRate(0.46);
+
+      await _tts.setSpeechRate(kIsWeb ? 1.0 : 0.46);
+
       await _tts.setPitch(1.0);
+
       await _tts.awaitSpeakCompletion(true);
     } catch (error) {
       debugPrint('TTS 초기화 오류: $error');
@@ -714,7 +735,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
   // ============================================================
 
   Future<void> _stopListeningAndSend() async {
-    if (_autoSending || _isWaiting) return;
+    if (_autoSending || _isWaiting) {
+      return;
+    }
 
     _autoSending = true;
 
@@ -1032,6 +1055,7 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
                     color: primaryColor,
                     size: 19,
                   ),
+
                   const SizedBox(width: 9),
 
                   Expanded(
