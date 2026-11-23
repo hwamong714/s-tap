@@ -24,6 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool obscurePassword = true;
   bool isLoading = false;
+  bool isGuestLoading = false;
 
   @override
   void dispose() {
@@ -482,6 +483,51 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // ============================================================
+  // 로그인 없이 사용하기
+  // ============================================================
+
+  Future<void> _continueAsGuest() async {
+    if (isLoading || isGuestLoading) return;
+
+    setState(() {
+      isGuestLoading = true;
+    });
+
+    try {
+      final response = await Supabase.instance.client.auth.signInAnonymously();
+
+      if (response.user == null || response.session == null) {
+        throw StateError('익명 사용자 세션 생성 실패');
+      }
+
+      debugPrint('익명 로그인 성공');
+
+      // main.dart의 AuthGate가 로그인 상태 변경을 감지하여
+      // 온보딩 또는 다음 검사 화면으로 자동 이동합니다.
+    } on AuthException catch (e) {
+      debugPrint('익명 로그인 실패: ${e.message}');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('로그인 없이 시작하지 못했어요.')));
+    } catch (e) {
+      debugPrint('익명 로그인 오류: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('서버 연결 중 문제가 발생했습니다.')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          isGuestLoading = false;
+        });
+      }
+    }
+  }
+
+  // ============================================================
   // 화면
   // ============================================================
 
@@ -901,6 +947,65 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 18),
 
                     // ============================================
+                    // ============================================
+                    // 로그인 없이 사용하기
+                    // ============================================
+                    SizedBox(
+                      width: double.infinity,
+                      height: 58,
+                      child: OutlinedButton(
+                        onPressed: (isLoading || isGuestLoading)
+                            ? null
+                            : _continueAsGuest,
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: const Color(0xFFECFFF7),
+                          foregroundColor: primary,
+                          side: const BorderSide(color: Color(0xFF80E7C5)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: isGuestLoading
+                            ? const SizedBox(
+                                width: 23,
+                                height: 23,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.3,
+                                  color: primary,
+                                ),
+                              )
+                            : const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.person_outline_rounded),
+                                  SizedBox(width: 10),
+                                  Text(
+                                    '로그인 없이 사용하기',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    const Text(
+                      '회원가입 없이 시작할 수 있어요.\n'
+                      '브라우저 데이터를 삭제하거나 로그아웃하면 '
+                      '기존 기록에 다시 접근하지 못할 수 있어요.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.5,
+                        color: Color(0xFF777D7A),
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
                     // 회원가입 바로가기
                     // ============================================
                     Row(
