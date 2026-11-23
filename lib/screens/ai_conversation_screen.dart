@@ -11,13 +11,16 @@ import '../services/conversation_ai_service.dart';
 import '../services/ai_conversation_storage_service.dart';
 
 // ============================================================
-// S-TAP AI 자유 대화 화면
+// S-TAP AI 자유 대화 화면 v2.2
+//
 // - 일상 / 진로 / 취미 자유 대화
+// - 부드러운 존댓말(해요체) 첫 인사
 // - STT 음성 인식
 // - Gemini AI 응답
 // - TTS 음성 출력
 // - 대화 기록 저장 및 이어하기
 // - 새 대화 시작 및 기록 삭제
+// - AI 이용 횟수 초과(429) 안내
 //
 // 웹 TTS 속도: 1.0
 // Android / iOS 네이티브 TTS 속도: 0.46
@@ -83,19 +86,19 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
   // 한국어 음성 인식 언어
   String? _koreanLocaleId;
 
-  // STT/TTS 초기화
+  // STT / TTS 초기화
   late final Future<void> _voiceInitFuture;
 
   // 기존 ConversationAiService와 호환
   int _legacyGoalStep = 1;
   static const int _legacyTotalSteps = 100000;
 
-    // ============================================================
-  // 대화 영역별 첫 인사
+  // ==========================================================
+  // 1. 대화 영역별 첫 인사
   //
   // S-TAP AI v2.2
-  // 모든 대화 영역에서 부드러운 존댓말(해요체) 사용
-  // ============================================================
+  // 모든 대화에서 부드러운 존댓말(해요체) 사용
+  // ==========================================================
 
   String get _openingMessage {
     switch (widget.domainCode) {
@@ -120,9 +123,10 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
             '오늘은 어떤 이야기를 나누고 싶으신가요?';
     }
   }
-  // ============================================================
-  // 화면 초기화
-  // ============================================================
+
+  // ==========================================================
+  // 2. 화면 초기화
+  // ==========================================================
 
   @override
   void initState() {
@@ -132,7 +136,6 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
 
     _voiceInitFuture = _initializeVoice();
 
-    // 첫 진입 시 기존 대화 / 새 대화 선택
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         unawaited(_chooseConversation(initial: true));
@@ -140,9 +143,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     });
   }
 
-  // ============================================================
-  // 대화 원문 저장 동의
-  // ============================================================
+  // ==========================================================
+  // 3. 대화 원문 저장 동의
+  // ==========================================================
 
   Future<bool?> _askHistoryConsent() {
     return showDialog<bool>(
@@ -187,9 +190,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     );
   }
 
-  // ============================================================
-  // 새로운 대화 시작
-  // ============================================================
+  // ==========================================================
+  // 4. 새로운 대화 시작
+  // ==========================================================
 
   Future<void> _startNewConversation() async {
     final saveHistory = await _askHistoryConsent();
@@ -232,9 +235,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     }
   }
 
-  // ============================================================
-  // 이전 대화 이어하기
-  // ============================================================
+  // ==========================================================
+  // 5. 이전 대화 이어하기
+  // ==========================================================
 
   Future<void> _resumeConversation(String sessionId) async {
     try {
@@ -269,20 +272,19 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
 
       _scrollToBottom();
     } catch (error) {
-      debugPrint('대화 불러오기 오류: $error');
+      debugPrint('대화 불러오기 오류: ${error.runtimeType}');
 
       if (!mounted) return;
 
       _showMessage('대화 기록을 불러오지 못했어요.');
 
-      // 불러오기 실패 시 이전 대화를 임의로 덮어쓰지 않음
       await _chooseConversation(initial: true);
     }
   }
 
-  // ============================================================
-  // 삭제 확인창
-  // ============================================================
+  // ==========================================================
+  // 6. 대화 삭제 확인
+  // ==========================================================
 
   Future<bool> _confirmDeleteConversation() async {
     final result = await showDialog<bool>(
@@ -317,14 +319,16 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     return result == true;
   }
 
-  // ============================================================
-  // 대화 선택
+  // ==========================================================
+  // 7. 대화 선택
   //
-  // 새 대화 시작 / 이전 대화 이어하기 / 삭제
-  // ============================================================
+  // 새 대화 / 이전 대화 / 삭제
+  // ==========================================================
 
   Future<void> _chooseConversation({bool initial = false}) async {
-    if (_isWaiting || _isListening) return;
+    if (_isWaiting || _isListening) {
+      return;
+    }
 
     if (!initial && _messages.any((message) => message.isUser)) {
       final switchConfirmed = await showDialog<bool>(
@@ -377,7 +381,7 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
         widget.domainCode,
       );
     } catch (error) {
-      debugPrint('대화 목록 조회 오류: $error');
+      debugPrint('대화 목록 조회 오류: ${error.runtimeType}');
 
       if (mounted) {
         _showMessage('저장된 대화 목록을 불러오지 못했어요.');
@@ -456,12 +460,10 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
                               ),
                               subtitle: Text(dateText),
 
-                              // 대화 이어하기
                               onTap: () {
                                 Navigator.pop(sheetContext, id);
                               },
 
-                              // 대화 삭제
                               trailing: IconButton(
                                 tooltip: '대화 삭제',
                                 icon: const Icon(Icons.delete_outline),
@@ -494,7 +496,10 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
                                       );
                                     }
                                   } catch (error) {
-                                    debugPrint('대화 삭제 오류: $error');
+                                    debugPrint(
+                                      '대화 삭제 오류: '
+                                      '${error.runtimeType}',
+                                    );
 
                                     if (mounted) {
                                       _showMessage('대화를 삭제하지 못했어요.');
@@ -521,7 +526,7 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
       return;
     }
 
-    // 새 대화 선택
+    // 새 대화 시작
     if (selected == '__new__' || (selected == null && initial)) {
       await _startNewConversation();
       return;
@@ -539,9 +544,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     await _resumeConversation(selected);
   }
 
-  // ============================================================
-  // STT 및 TTS 초기화
-  // ============================================================
+  // ==========================================================
+  // 8. STT 및 TTS 초기화
+  // ==========================================================
 
   Future<void> _initializeVoice() async {
     try {
@@ -571,19 +576,10 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
         });
       }
     } catch (error) {
-      debugPrint('STT 초기화 오류: $error');
+      debugPrint('STT 초기화 오류: ${error.runtimeType}');
     }
 
-    // ========================================================
-    // TTS 초기화
-    //
-    // 웹: 기본 속도에 가까운 1.0
-    // Android/iOS 네이티브: 기존 0.46 유지
-    //
-    // Chrome / 삼성 인터넷에서 음성이 지나치게
-    // 느리게 출력되는 현상 개선
-    // ========================================================
-
+    // 웹 / 모바일 TTS 속도 구분
     try {
       await _tts.setLanguage('ko-KR');
 
@@ -593,13 +589,13 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
 
       await _tts.awaitSpeakCompletion(true);
     } catch (error) {
-      debugPrint('TTS 초기화 오류: $error');
+      debugPrint('TTS 초기화 오류: ${error.runtimeType}');
     }
   }
 
-  // ============================================================
-  // AI 음성 출력
-  // ============================================================
+  // ==========================================================
+  // 9. AI 음성 출력
+  // ==========================================================
 
   Future<void> _speakAiMessage(String text) async {
     if (!mounted) return;
@@ -613,7 +609,7 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
 
       await _tts.speak(text.replaceAll('\n', ' '));
     } catch (error) {
-      debugPrint('TTS 재생 오류: $error');
+      debugPrint('TTS 재생 오류: ${error.runtimeType}');
     }
 
     if (!mounted) return;
@@ -623,9 +619,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     });
   }
 
-  // ============================================================
-  // 음성 인식 시작
-  // ============================================================
+  // ==========================================================
+  // 10. 음성 인식 시작
+  // ==========================================================
 
   Future<void> _startListening() async {
     if (_isChoosingConversation || _isWaiting || _isListening) {
@@ -665,7 +661,7 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
         ),
       );
     } catch (error) {
-      debugPrint('음성 인식 시작 오류: $error');
+      debugPrint('음성 인식 시작 오류: ${error.runtimeType}');
 
       if (!mounted) return;
 
@@ -677,9 +673,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     }
   }
 
-  // ============================================================
-  // 음성 인식 결과
-  // ============================================================
+  // ==========================================================
+  // 11. 음성 인식 결과
+  // ==========================================================
 
   void _onSpeechResult(SpeechRecognitionResult result) {
     if (!mounted || _isWaiting || _autoSending || _isChoosingConversation) {
@@ -698,9 +694,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     }
   }
 
-  // ============================================================
-  // 음성 인식 상태 변화
-  // ============================================================
+  // ==========================================================
+  // 12. 음성 인식 상태 변화
+  // ==========================================================
 
   void _onSpeechStatus(String status) {
     if (!mounted) return;
@@ -712,9 +708,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     }
   }
 
-  // ============================================================
-  // 음성 인식 오류
-  // ============================================================
+  // ==========================================================
+  // 13. 음성 인식 오류
+  // ==========================================================
 
   void _onSpeechError(SpeechRecognitionError error) {
     debugPrint('음성인식 오류: ${error.errorMsg}');
@@ -733,9 +729,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     }
   }
 
-  // ============================================================
-  // 음성 인식을 종료한 후 메시지 전송
-  // ============================================================
+  // ==========================================================
+  // 14. 음성 인식 종료 후 메시지 전송
+  // ==========================================================
 
   Future<void> _stopListeningAndSend() async {
     if (_autoSending || _isWaiting) {
@@ -761,11 +757,11 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     }
   }
 
-  // ============================================================
-  // Gemini에 전달할 최근 대화 기록
+  // ==========================================================
+  // 15. 최근 대화 기록 구성
   //
-  // 전체 저장 기록이 길어도 최근 10개 메시지만 전송
-  // ============================================================
+  // 전체 기록 중 최근 10개 메시지만 AI에 전달
+  // ==========================================================
 
   List<Map<String, dynamic>> _buildHistory() {
     const maxMessages = 10;
@@ -780,9 +776,15 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
         .toList();
   }
 
-  // ============================================================
-  // 메시지 전송
-  // ============================================================
+  // ==========================================================
+  // 16. 메시지 전송
+  //
+  // - AI 응답 요청
+  // - 대화 기록 저장
+  // - 활동 날짜 기록
+  // - TTS 재생
+  // - 429 사용량 초과 안내
+  // ==========================================================
 
   Future<void> _sendMessage() async {
     if (_isChoosingConversation || _isWaiting) {
@@ -791,7 +793,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
 
     final userText = _inputController.text.trim();
 
-    if (userText.isEmpty) return;
+    if (userText.isEmpty) {
+      return;
+    }
 
     if (userText.length > 2000) {
       _showMessage('한 번에 2,000자까지만 보낼 수 있어요.');
@@ -812,7 +816,7 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
 
     if (!mounted) return;
 
-    // 지금 보낼 사용자 메시지는 제외한 이전 대화
+    // 현재 메시지를 제외한 이전 대화 기록
     final history = _buildHistory();
 
     setState(() {
@@ -827,13 +831,12 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     _scrollToBottom();
 
     try {
-      // ======================================================
+      // ------------------------------------------------------
       // AI 응답 요청
       //
-      // ConversationAiService가 daily/career/hobby를
-      // free-conversation-ai 함수로 전달하도록
-      // 이미 설정되어 있어야 합니다.
-      // ======================================================
+      // daily / career / hobby는
+      // free-conversation-ai 운영 함수로 연결
+      // ------------------------------------------------------
 
       final result = await ConversationAiService.getReply(
         scenarioCode: widget.domainCode,
@@ -848,7 +851,7 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
 
       if (!mounted) return;
 
-      // AI 응답을 화면에 표시
+      // AI 응답 화면 표시
       setState(() {
         _legacyGoalStep = result.goalStep;
 
@@ -860,15 +863,12 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
       bool historySaveFailed = false;
       bool activitySaveFailed = false;
 
-      // ======================================================
-      // 대화 원문 저장
-      //
-      // 사용자가 저장에 동의한 경우에만 실행
-      // ======================================================
+      // ------------------------------------------------------
+      // 사용자가 동의한 경우 대화 원문 저장
+      // ------------------------------------------------------
 
       if (_historySavingEnabled) {
         try {
-          // 처음 AI 응답이 성공하면 세션 생성
           final id =
               _sessionId ??
               await AiConversationStorageService.createSession(
@@ -890,22 +890,22 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
         } catch (error) {
           historySaveFailed = true;
 
-          debugPrint('AI 대화 저장 오류: $error');
+          debugPrint('AI 대화 저장 오류: ${error.runtimeType}');
         }
       }
 
-      // ======================================================
+      // ------------------------------------------------------
       // 대화 참여 날짜 기록
       //
       // 원문 저장 여부와 관계없이 기록
-      // ======================================================
+      // ------------------------------------------------------
 
       try {
         await AiConversationStorageService.recordConversationDay();
       } catch (error) {
         activitySaveFailed = true;
 
-        debugPrint('대화 참여 날짜 기록 오류: $error');
+        debugPrint('활동 날짜 기록 오류: ${error.runtimeType}');
       }
 
       if (!mounted) return;
@@ -915,7 +915,10 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
       });
 
       if (historySaveFailed) {
-        _showMessage('AI 답변은 받았지만 대화 기록 저장에 실패했어요.');
+        _showMessage(
+          'AI 답변은 받았지만 '
+          '대화 기록 저장에 실패했어요.',
+        );
       } else if (activitySaveFailed) {
         _showMessage(
           'AI 답변은 받았지만 '
@@ -923,27 +926,47 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
         );
       }
 
-      // 기존 TTS 기능 유지
+      // 기존 TTS 재생 유지
       unawaited(_speakAiMessage(result.reply));
     } catch (error) {
-      debugPrint('AI 응답 오류: $error');
+      // ------------------------------------------------------
+      // S-TAP AI v2.2
+      // AI 사용량 초과(HTTP 429) 안내
+      // ------------------------------------------------------
+
+      debugPrint('AI 응답 오류: ${error.runtimeType}');
 
       if (!mounted) return;
+
+      // ConversationAiService가 전달한 안내 메시지
+      final rawMessage = error
+          .toString()
+          .replaceFirst(RegExp(r'^Exception:\s*'), '')
+          .trim();
+
+      // 서버에서 사용하는 알려진 429 안내 문구만 허용
+      final isQuotaExceeded =
+          rawMessage.startsWith('오늘 사용할 수 있는 AI 대화 횟수에 도달했어요.') ||
+          rawMessage.startsWith('잠시 대화 요청이 많았어요.') ||
+          rawMessage.startsWith('AI 대화 이용 횟수에 도달했어요.') ||
+          rawMessage.startsWith('AI 서비스 이용량이 일시적으로 많습니다.');
+
+      final displayMessage = isQuotaExceeded
+          ? rawMessage
+          : 'AI와 연결하지 못했어요. '
+                '잠시 후 다시 시도해 주세요.';
 
       setState(() {
         _isWaiting = false;
       });
 
-      _showMessage(
-        'AI와 연결하지 못했어요. '
-        '잠시 후 다시 시도해 주세요.',
-      );
-    }
-  }
+      _showMessage(displayMessage);
+    } // catch 종료
+  } // _sendMessage 함수 종료
 
-  // ============================================================
-  // 자동 스크롤
-  // ============================================================
+  // ==========================================================
+  // 17. 자동 스크롤
+  // ==========================================================
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -959,9 +982,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     });
   }
 
-  // ============================================================
-  // 안내 메시지
-  // ============================================================
+  // ==========================================================
+  // 18. 안내 메시지
+  // ==========================================================
 
   void _showMessage(String message) {
     if (!mounted) return;
@@ -971,9 +994,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     );
   }
 
-  // ============================================================
-  // 리소스 정리
-  // ============================================================
+  // ==========================================================
+  // 19. 리소스 정리
+  // ==========================================================
 
   @override
   void dispose() {
@@ -986,9 +1009,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     super.dispose();
   }
 
-  // ============================================================
-  // 화면 구성
-  // ============================================================
+  // ==========================================================
+  // 20. 화면 구성
+  // ==========================================================
 
   @override
   Widget build(BuildContext context) {
@@ -1004,6 +1027,7 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
 
     return Scaffold(
       backgroundColor: backgroundColor,
+
       appBar: AppBar(
         backgroundColor: backgroundColor,
         surfaceTintColor: backgroundColor,
@@ -1012,7 +1036,7 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
           style: const TextStyle(fontWeight: FontWeight.w900),
         ),
         actions: [
-          // 저장된 대화 목록
+          // 이전 대화 / 새 대화
           IconButton(
             tooltip: '지난 대화 보기 / 새 대화',
             onPressed: (_isWaiting || _isListening || _isChoosingConversation)
@@ -1031,7 +1055,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
                   .where((message) => !message.isUser)
                   .toList();
 
-              if (aiMessages.isEmpty) return;
+              if (aiMessages.isEmpty) {
+                return;
+              }
 
               unawaited(_speakAiMessage(aiMessages.last.text));
             },
@@ -1043,9 +1069,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // ==================================================
+            // ------------------------------------------------
             // 대화 상태 안내
-            // ==================================================
+            // ------------------------------------------------
 
             Container(
               width: double.infinity,
@@ -1076,9 +1102,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
               ),
             ),
 
-            // ==================================================
+            // ------------------------------------------------
             // 채팅 메시지 목록
-            // ==================================================
+            // ------------------------------------------------
             Expanded(
               child: ListView.builder(
                 controller: _scrollController,
@@ -1095,9 +1121,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
               ),
             ),
 
-            // ==================================================
-            // AI 응답 대기 표시
-            // ==================================================
+            // ------------------------------------------------
+            // AI 응답 대기
+            // ------------------------------------------------
             if (_isWaiting)
               const Padding(
                 padding: EdgeInsets.only(bottom: 12),
@@ -1107,9 +1133,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
                 ),
               ),
 
-            // ==================================================
+            // ------------------------------------------------
             // 음성 / 텍스트 입력 영역
-            // ==================================================
+            // ------------------------------------------------
             Container(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 15),
               decoration: const BoxDecoration(
@@ -1192,9 +1218,9 @@ class _AiConversationScreenState extends State<AiConversationScreen> {
     );
   }
 
-  // ============================================================
-  // 메시지 말풍선
-  // ============================================================
+  // ==========================================================
+  // 21. 채팅 메시지 말풍선
+  // ==========================================================
 
   Widget _buildMessageBubble(_ChatMessage message) {
     return Align(

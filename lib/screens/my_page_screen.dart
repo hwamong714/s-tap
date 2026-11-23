@@ -8,6 +8,20 @@ import 'region_edit_screen.dart';
 import 'interest_edit_screen.dart';
 import 'conversation_training_screen.dart';
 import 'record_screen.dart';
+import 'initial_hq25_result_screen.dart';
+
+// ============================================================
+// S-TAP 마이페이지
+//
+// - 사용자 프로필
+// - 관심 영역 및 생활 지역
+// - 초기 HQ-25 검사 완료 여부
+// - 생활상태 검사 완료 여부
+// - 알림 설정
+// - 이용약관 / 개인정보처리방침
+// - 로그아웃
+// - 하단 메뉴 명칭: AI 대화
+// ============================================================
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -48,12 +62,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
   @override
   void initState() {
     super.initState();
-
     _loadMyPageData();
   }
 
   // ============================================================
-  // 마이페이지 데이터 불러오기
+  // 1. 마이페이지 데이터 불러오기
   // ============================================================
 
   Future<void> _loadMyPageData() async {
@@ -61,19 +74,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
       final user = Supabase.instance.client.auth.currentUser;
 
       if (user == null) {
-        if (!mounted) {
-          return;
-        }
+        if (!mounted) return;
 
         setState(() {
           isLoading = false;
         });
-
         return;
       }
 
       // --------------------------------------------------------
-      // 프로필
+      // 프로필 데이터
       // --------------------------------------------------------
 
       final profile = await Supabase.instance.client
@@ -94,7 +104,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           .maybeSingle();
 
       // --------------------------------------------------------
-      // HQ-25 초기검사
+      // HQ-25 초기검사 완료 여부
       // --------------------------------------------------------
 
       final hq25 = await Supabase.instance.client
@@ -106,7 +116,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           .maybeSingle();
 
       // --------------------------------------------------------
-      // 생활상태 초기검사
+      // 생활상태 초기검사 완료 여부
       // --------------------------------------------------------
 
       final lifeStatus = await Supabase.instance.client
@@ -117,91 +127,81 @@ class _MyPageScreenState extends State<MyPageScreen> {
           .limit(1)
           .maybeSingle();
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
+
+      // --------------------------------------------------------
+      // 관심 영역 변환
+      // --------------------------------------------------------
 
       final rawInterests = profile?['interests'];
 
       List<String> loadedInterests = [];
 
       if (rawInterests is List) {
-        loadedInterests =
-            rawInterests.map((item) => item.toString()).toList();
+        loadedInterests = rawInterests.map((item) => item.toString()).toList();
       }
+
+      // --------------------------------------------------------
+      // 프로필 이미지 Signed URL
+      // --------------------------------------------------------
 
       String? loadedProfileImageUrl;
 
-      final storedProfileImagePath =
-          profile?['profile_image_url']?.toString();
+      final storedProfileImagePath = profile?['profile_image_url']?.toString();
 
       if (storedProfileImagePath != null &&
           storedProfileImagePath.trim().isNotEmpty) {
         try {
           if (storedProfileImagePath.startsWith('http://') ||
               storedProfileImagePath.startsWith('https://')) {
-            // 예전 URL 방식 데이터가 있다면 그대로 사용
             loadedProfileImageUrl = storedProfileImagePath;
           } else {
-            // Private Storage 파일은 임시 signed URL 생성
-            loadedProfileImageUrl =
-                await Supabase.instance.client.storage
-                    .from('profile-images')
-                    .createSignedUrl(
-                      storedProfileImagePath,
-                      60 * 60,
-                    );
+            loadedProfileImageUrl = await Supabase.instance.client.storage
+                .from('profile-images')
+                .createSignedUrl(storedProfileImagePath, 60 * 60);
           }
         } catch (_) {
           loadedProfileImageUrl = null;
         }
       }
 
+      if (!mounted) return;
+
+      // --------------------------------------------------------
+      // 화면 상태 업데이트
+      // --------------------------------------------------------
+
       setState(() {
         email = user.email ?? '';
 
-        nickname =
-            profile?['nickname']?.toString() ?? '사용자';
+        nickname = profile?['nickname']?.toString() ?? '사용자';
 
-        message =
-            profile?['message']?.toString();
+        message = profile?['message']?.toString();
 
-        avatarType =
-            profile?['avatar_type']?.toString() ?? 'emoji';
+        avatarType = profile?['avatar_type']?.toString() ?? 'emoji';
 
-        avatarEmoji =
-            profile?['avatar_emoji']?.toString() ?? '🌱';
+        avatarEmoji = profile?['avatar_emoji']?.toString() ?? '🌱';
 
-        profileImageUrl =
-            loadedProfileImageUrl;
+        profileImageUrl = loadedProfileImageUrl;
 
-        interests =
-            loadedInterests;
+        interests = loadedInterests;
 
-        regionLevel1 =
-            profile?['region_level1']?.toString();
+        regionLevel1 = profile?['region_level1']?.toString();
 
-        regionLevel2 =
-            profile?['region_level2']?.toString();
+        regionLevel2 = profile?['region_level2']?.toString();
 
-        regionLevel3 =
-            profile?['region_level3']?.toString();
+        regionLevel3 = profile?['region_level3']?.toString();
 
-        notificationsEnabled =
-            profile?['notifications_enabled'] == true;
+        notificationsEnabled = profile?['notifications_enabled'] == true;
 
-        hasInitialHq25 =
-            hq25 != null;
+        hasInitialHq25 = hq25 != null;
 
-        hasInitialLifeStatus =
-            lifeStatus != null;
+        hasInitialLifeStatus = lifeStatus != null;
 
         isLoading = false;
       });
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       setState(() {
         isLoading = false;
@@ -209,18 +209,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(
-        SnackBar(
-          content: Text(
-            '마이페이지 정보를 불러오지 못했습니다.\n$error',
-          ),
-        ),
-      );
+      ).showSnackBar(SnackBar(content: Text('마이페이지 정보를 불러오지 못했습니다.\n$error')));
     }
   }
 
   // ============================================================
-  // 관심 영역 표시
+  // 2. 관심 영역 표시
   // ============================================================
 
   String get _interestSummary {
@@ -236,21 +230,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   // ============================================================
-  // 지역 표시
+  // 3. 생활 지역 표시
   // ============================================================
 
   String get _regionSummary {
     final parts = <String>[
-      if (regionLevel1 != null &&
-          regionLevel1!.trim().isNotEmpty)
+      if (regionLevel1 != null && regionLevel1!.trim().isNotEmpty)
         regionLevel1!.trim(),
-
-      if (regionLevel2 != null &&
-          regionLevel2!.trim().isNotEmpty)
+      if (regionLevel2 != null && regionLevel2!.trim().isNotEmpty)
         regionLevel2!.trim(),
-
-      if (regionLevel3 != null &&
-          regionLevel3!.trim().isNotEmpty)
+      if (regionLevel3 != null && regionLevel3!.trim().isNotEmpty)
         regionLevel3!.trim(),
     ];
 
@@ -262,20 +251,15 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   // ============================================================
-  // 알림 설정 저장
+  // 4. 알림 설정 저장
   // ============================================================
 
   Future<void> _updateNotification(bool value) async {
-    if (isUpdatingNotification) {
-      return;
-    }
+    if (isUpdatingNotification) return;
 
-    final user =
-        Supabase.instance.client.auth.currentUser;
+    final user = Supabase.instance.client.auth.currentUser;
 
-    if (user == null) {
-      return;
-    }
+    if (user == null) return;
 
     setState(() {
       isUpdatingNotification = true;
@@ -286,30 +270,20 @@ class _MyPageScreenState extends State<MyPageScreen> {
           .from('profiles_v2')
           .update({
             'notifications_enabled': value,
-            'updated_at':
-                DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', user.id);
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       setState(() {
         notificationsEnabled = value;
       });
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            '알림 설정을 변경하지 못했습니다.',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('알림 설정을 변경하지 못했습니다.')));
     } finally {
       if (mounted) {
         setState(() {
@@ -320,181 +294,109 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   // ============================================================
-  // 로그아웃 확인
+  // 5. 로그아웃 확인
   // ============================================================
 
   Future<void> _confirmLogout() async {
-    final shouldLogout =
-        await showDialog<bool>(
+    final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text(
             '로그아웃할까요?',
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-            ),
+            style: TextStyle(fontWeight: FontWeight.w800),
           ),
-          content: const Text(
-            '다시 이용하려면 계정으로 로그인해야 합니다.',
-          ),
+          content: const Text('다시 이용하려면 계정으로 로그인해야 합니다.'),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(
-                  dialogContext,
-                ).pop(false);
+                Navigator.of(dialogContext).pop(false);
               },
               child: const Text('취소'),
             ),
             FilledButton(
               onPressed: () {
-                Navigator.of(
-                  dialogContext,
-                ).pop(true);
+                Navigator.of(dialogContext).pop(true);
               },
-              style:
-                  FilledButton.styleFrom(
-                backgroundColor:
-                    errorColor,
-              ),
-              child:
-                  const Text('로그아웃'),
+              style: FilledButton.styleFrom(backgroundColor: errorColor),
+              child: const Text('로그아웃'),
             ),
           ],
         );
       },
     );
 
-    if (shouldLogout != true) {
-      return;
-    }
+    if (shouldLogout != true) return;
 
     try {
-      await Supabase.instance.client.auth
-          .signOut();
+      await Supabase.instance.client.auth.signOut();
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
-      // 마이페이지 등 위에 쌓인 화면을 모두 닫고
-      // AuthGate가 보여주는 로그인 화면으로 돌아갑니다.
-      Navigator.of(context).popUntil(
-        (route) => route.isFirst,
-      );
+      // AuthGate가 관리하는 첫 화면으로 이동
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '로그아웃 중 오류가 발생했습니다.\n$error',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('로그아웃 중 오류가 발생했습니다.\n$error')));
     }
   }
 
   // ============================================================
-  // 준비 중 메시지
+  // 6. 준비 중 메시지
   // ============================================================
 
-  void _showPreparingMessage(
-    String featureName,
-  ) {
+  void _showPreparingMessage(String featureName) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          '$featureName 기능을 준비하고 있어요.',
-        ),
-        behavior:
-            SnackBarBehavior.floating,
+        content: Text('$featureName 기능을 준비하고 있어요.'),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
   // ============================================================
-  // 화면
+  // 7. 메인 화면
   // ============================================================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor,
-
-      bottomNavigationBar:
-          _buildBottomNavigation(),
-
+      bottomNavigationBar: _buildBottomNavigation(),
       body: SafeArea(
         child: RefreshIndicator(
           color: primaryColor,
           onRefresh: _loadMyPageData,
           child: SingleChildScrollView(
-            physics:
-                const AlwaysScrollableScrollPhysics(),
-            padding:
-                const EdgeInsets.fromLTRB(
-              20,
-              22,
-              20,
-              32,
-            ),
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 32),
             child: isLoading
                 ? _buildLoading()
                 : Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment
-                            .start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Padding(
-                        padding:
-                            EdgeInsets.symmetric(
-                          horizontal: 4,
-                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 4),
                         child: Text(
                           '내 프로필',
                           style: TextStyle(
                             fontSize: 32,
-                            fontWeight:
-                                FontWeight
-                                    .w900,
-                            color:
-                                darkColor,
+                            fontWeight: FontWeight.w900,
+                            color: darkColor,
                           ),
                         ),
                       ),
-
-                      const SizedBox(
-                        height: 24,
-                      ),
-
+                      const SizedBox(height: 24),
                       _buildProfileCard(),
-
-                      const SizedBox(
-                        height: 18,
-                      ),
-
+                      const SizedBox(height: 18),
                       _buildMyInfoCard(),
-
-                      const SizedBox(
-                        height: 18,
-                      ),
-
+                      const SizedBox(height: 18),
                       _buildStatusCard(),
-
-                      const SizedBox(
-                        height: 18,
-                      ),
-
+                      const SizedBox(height: 18),
                       _buildSettingsCard(),
-
-                      const SizedBox(
-                        height: 18,
-                      ),
-
+                      const SizedBox(height: 18),
                       _buildAccountCard(),
                     ],
                   ),
@@ -505,7 +407,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   // ============================================================
-  // 로딩
+  // 8. 로딩 화면
   // ============================================================
 
   Widget _buildLoading() {
@@ -513,24 +415,15 @@ class _MyPageScreenState extends State<MyPageScreen> {
       height: 550,
       child: Center(
         child: Column(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const CircularProgressIndicator(
-              color: primaryColor,
-            ),
-
-            const SizedBox(
-              height: 18,
-            ),
-
+            const CircularProgressIndicator(color: primaryColor),
+            const SizedBox(height: 18),
             Text(
               '내 정보를 불러오고 있어요.',
               style: TextStyle(
-                color:
-                    Colors.grey.shade600,
-                fontWeight:
-                    FontWeight.w600,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -540,213 +433,109 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   // ============================================================
-  // 상단 프로필 카드
+  // 9. 상단 프로필 카드
   // ============================================================
 
   Widget _buildProfileCard() {
     return Container(
       width: double.infinity,
-      padding:
-          const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        gradient:
-            const LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
-          end:
-              Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            Color(0xFFF0FFF8),
-          ],
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Color(0xFFF0FFF8)],
         ),
-        borderRadius:
-            BorderRadius.circular(
-          26,
-        ),
-        border: Border.all(
-          color:
-              const Color(
-            0xFFDDEFE8,
-          ),
-        ),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: const Color(0xFFDDEFE8)),
         boxShadow: [
           BoxShadow(
-            color:
-                Colors.black.withValues(
-              alpha: 0.035,
-            ),
+            color: Colors.black.withValues(alpha: 0.035),
             blurRadius: 20,
-            offset:
-                const Offset(
-              0,
-              8,
-            ),
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
             width: 82,
             height: 82,
-            decoration:
-                BoxDecoration(
-              color:
-                  const Color(
-                0xFFE9FFF5,
-              ),
-              shape:
-                  BoxShape.circle,
-              border:
-                  Border.all(
-                color: primaryColor
-                    .withValues(
-                  alpha: 0.12,
-                ),
-              ),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE9FFF5),
+              shape: BoxShape.circle,
+              border: Border.all(color: primaryColor.withValues(alpha: 0.12)),
             ),
-            clipBehavior:
-                Clip.antiAlias,
-            child:
-                _buildProfileAvatar(),
+            clipBehavior: Clip.antiAlias,
+            child: _buildProfileAvatar(),
           ),
-
-          const SizedBox(
-            width: 18,
-          ),
-
+          const SizedBox(width: 18),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment
-                      .start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   nickname,
                   maxLines: 1,
-                  overflow:
-                      TextOverflow
-                          .ellipsis,
-                  style:
-                      const TextStyle(
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
                     fontSize: 21,
-                    fontWeight:
-                        FontWeight
-                            .w900,
-                    color:
-                        darkColor,
+                    fontWeight: FontWeight.w900,
+                    color: darkColor,
                   ),
                 ),
-
-                const SizedBox(
-                  height: 7,
-                ),
-
-                if (message != null &&
-                    message!
-                        .trim()
-                        .isNotEmpty)
+                const SizedBox(height: 7),
+                if (message != null && message!.trim().isNotEmpty)
                   Text(
                     message!,
                     maxLines: 2,
-                    overflow:
-                        TextOverflow
-                            .ellipsis,
-                    style:
-                        TextStyle(
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
                       fontSize: 14.5,
                       height: 1.35,
-                      color: Colors
-                          .grey
-                          .shade700,
+                      color: Colors.grey.shade700,
                     ),
                   )
                 else
                   Text(
                     '한 줄 메시지가 아직 없어요.',
-                    style:
-                        TextStyle(
-                      fontSize: 14,
-                      color: Colors
-                          .grey
-                          .shade500,
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
                   ),
-
-                const SizedBox(
-                  height: 6,
-                ),
-
+                const SizedBox(height: 6),
                 Text(
-                  email.isEmpty
-                      ? '이메일 정보 없음'
-                      : email,
+                  email.isEmpty ? '이메일 정보 없음' : email,
                   maxLines: 1,
-                  overflow:
-                      TextOverflow
-                          .ellipsis,
-                  style:
-                      TextStyle(
-                    fontSize: 12.5,
-                    color: Colors
-                        .grey
-                        .shade500,
-                  ),
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 12.5, color: Colors.grey.shade500),
                 ),
               ],
             ),
           ),
-
-          const SizedBox(
-            width: 10,
-          ),
-
+          const SizedBox(width: 10),
           FilledButton(
             onPressed: () async {
-              final updated =
-                  await Navigator.push<bool>(
+              final updated = await Navigator.push<bool>(
                 context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      const ProfileEditScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const ProfileEditScreen()),
               );
 
               if (updated == true) {
                 await _loadMyPageData();
               }
             },
-            style:
-                FilledButton.styleFrom(
-              backgroundColor:
-                  const Color(
-                0xFFE0F8EE,
-              ),
-              foregroundColor:
-                  primaryColor,
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFE0F8EE),
+              foregroundColor: primaryColor,
               elevation: 0,
-              padding:
-                  const EdgeInsets.symmetric(
-                horizontal: 15,
-                vertical: 11,
-              ),
-              shape:
-                  RoundedRectangleBorder(
-                borderRadius:
-                    BorderRadius.circular(
-                  18,
-                ),
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 11),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
               ),
             ),
             child: const Text(
               '프로필 수정',
-              style: TextStyle(
-                fontWeight:
-                    FontWeight.w800,
-                fontSize: 13,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
             ),
           ),
         ],
@@ -755,26 +544,20 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   // ============================================================
-  // 프로필 이미지 / 이모지
+  // 10. 프로필 이미지 및 이모지
   // ============================================================
 
   Widget _buildProfileAvatar() {
     final hasImage =
         avatarType == 'image' &&
         profileImageUrl != null &&
-        profileImageUrl!
-            .trim()
-            .isNotEmpty;
+        profileImageUrl!.trim().isNotEmpty;
 
     if (hasImage) {
       return Image.network(
         profileImageUrl!,
         fit: BoxFit.cover,
-        errorBuilder: (
-          context,
-          error,
-          stackTrace,
-        ) {
+        errorBuilder: (context, error, stackTrace) {
           return _buildEmojiAvatar();
         },
       );
@@ -785,46 +568,29 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   Widget _buildEmojiAvatar() {
     return Center(
-      child: Text(
-        avatarEmoji,
-        style:
-            const TextStyle(
-          fontSize: 42,
-        ),
-      ),
+      child: Text(avatarEmoji, style: const TextStyle(fontSize: 42)),
     );
   }
 
   // ============================================================
-  // 내 정보
+  // 11. 내 정보
   // ============================================================
 
   Widget _buildMyInfoCard() {
     return _buildSectionCard(
-      icon:
-          Icons.person_rounded,
-      title:
-          '내 정보',
+      icon: Icons.person_rounded,
+      title: '내 정보',
       children: [
         _buildMenuRow(
-          icon:
-              Icons.favorite_border_rounded,
-          title:
-              '관심 영역',
-          value:
-              _interestSummary,
-          showArrow:
-              true,
+          icon: Icons.favorite_border_rounded,
+          title: '관심 영역',
+          value: _interestSummary,
+          showArrow: true,
           onTap: () async {
-            final updated =
-                await Navigator.push<bool>(
+            final updated = await Navigator.push<bool>(
               context,
               MaterialPageRoute(
-                builder: (_) =>
-                    InterestEditScreen(
-                  currentInterests:
-                      interests,
-                ),
+                builder: (_) => InterestEditScreen(currentInterests: interests),
               ),
             );
 
@@ -833,31 +599,20 @@ class _MyPageScreenState extends State<MyPageScreen> {
             }
           },
         ),
-
         _buildDivider(),
-
         _buildMenuRow(
-          icon:
-              Icons.location_on_outlined,
-          title:
-              '생활 지역',
-          value:
-              _regionSummary,
-          showArrow:
-              true,
+          icon: Icons.location_on_outlined,
+          title: '생활 지역',
+          value: _regionSummary,
+          showArrow: true,
           onTap: () async {
-            final updated =
-                await Navigator.push<bool>(
+            final updated = await Navigator.push<bool>(
               context,
               MaterialPageRoute(
-                builder: (_) =>
-                    RegionEditScreen(
-                  regionLevel1:
-                      regionLevel1,
-                  regionLevel2:
-                      regionLevel2,
-                  regionLevel3:
-                      regionLevel3,
+                builder: (_) => RegionEditScreen(
+                  regionLevel1: regionLevel1,
+                  regionLevel2: regionLevel2,
+                  regionLevel3: regionLevel3,
                 ),
               ),
             );
@@ -872,51 +627,39 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   // ============================================================
-  // 내 상태 확인
+  // 12. 내 상태 확인
+  //
+  // 현재는 완료 여부만 조회합니다.
+  // 검사 결과 상세 화면은 추후 구현 예정입니다.
   // ============================================================
 
   Widget _buildStatusCard() {
     return _buildSectionCard(
-      icon:
-          Icons.bar_chart_rounded,
-      title:
-          '내 상태 확인',
+      icon: Icons.bar_chart_rounded,
+      title: '내 상태 확인',
       children: [
         _buildMenuRow(
-          icon:
-              Icons.description_outlined,
-          title:
-              '초기 상태 확인',
-          customTrailing:
-              _buildStatusChip(
-            hasInitialHq25,
-          ),
-          showArrow:
-              true,
+          icon: Icons.description_outlined,
+          title: '초기 HQ-25 결과',
+          customTrailing: _buildStatusChip(hasInitialHq25),
+          showArrow: true,
           onTap: () {
-            _showPreparingMessage(
-              '초기 상태 결과 보기',
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const InitialHq25ResultScreen(),
+              ),
             );
           },
         ),
-
         _buildDivider(),
-
         _buildMenuRow(
-          icon:
-              Icons.calendar_month_outlined,
-          title:
-              '생활상태 확인',
-          customTrailing:
-              _buildStatusChip(
-            hasInitialLifeStatus,
-          ),
-          showArrow:
-              true,
+          icon: Icons.calendar_month_outlined,
+          title: '생활상태 확인',
+          customTrailing: _buildStatusChip(hasInitialLifeStatus),
+          showArrow: true,
           onTap: () {
-            _showPreparingMessage(
-              '생활상태 기록 보기',
-            );
+            _showPreparingMessage('생활상태 기록 보기');
           },
         ),
       ],
@@ -924,75 +667,48 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   // ============================================================
-  // 설정
+  // 13. 설정
   // ============================================================
 
   Widget _buildSettingsCard() {
     return _buildSectionCard(
-      icon:
-          Icons.settings_rounded,
-      title:
-          '설정',
+      icon: Icons.settings_rounded,
+      title: '설정',
       children: [
         _buildMenuRow(
-          icon:
-              Icons.notifications_none_rounded,
-          title:
-              '알림 설정',
-          customTrailing:
-              Switch(
-            value:
-                notificationsEnabled,
-            onChanged:
-                isUpdatingNotification
-                    ? null
-                    : _updateNotification,
-            activeTrackColor:
-                primaryColor,
-            activeThumbColor:
-                Colors.white,
+          icon: Icons.notifications_none_rounded,
+          title: '알림 설정',
+          customTrailing: Switch(
+            value: notificationsEnabled,
+            onChanged: isUpdatingNotification ? null : _updateNotification,
+            activeTrackColor: primaryColor,
+            activeThumbColor: Colors.white,
           ),
         ),
-
         _buildDivider(),
-
         _buildMenuRow(
-          icon:
-              Icons.article_outlined,
-          title:
-              '이용약관',
-          showArrow:
-              true,
+          icon: Icons.article_outlined,
+          title: '이용약관',
+          showArrow: true,
           onTap: () {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) =>
-                    const TermsScreen(
-                  viewOnly: true,
-                ),
+                builder: (_) => const TermsScreen(viewOnly: true),
               ),
             );
           },
         ),
-
         _buildDivider(),
-
         _buildMenuRow(
-          icon:
-              Icons.shield_outlined,
-          title:
-              '개인정보처리방침',
-          showArrow:
-              true,
+          icon: Icons.shield_outlined,
+          title: '개인정보처리방침',
+          showArrow: true,
           onTap: () {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) =>
-                    const PrivacyPolicyScreen(
-                  viewOnly: true,
-                ),
+                builder: (_) => const PrivacyPolicyScreen(viewOnly: true),
               ),
             );
           },
@@ -1002,36 +718,28 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   // ============================================================
-  // 계정
+  // 14. 계정
   // ============================================================
 
   Widget _buildAccountCard() {
     return _buildSectionCard(
-      icon:
-          Icons.lock_outline_rounded,
-      title:
-          '계정',
+      icon: Icons.lock_outline_rounded,
+      title: '계정',
       children: [
         _buildMenuRow(
-          icon:
-              Icons.logout_rounded,
-          title:
-              '로그아웃',
-          titleColor:
-              errorColor,
-          iconColor:
-              errorColor,
-          showArrow:
-              true,
-          onTap:
-              _confirmLogout,
+          icon: Icons.logout_rounded,
+          title: '로그아웃',
+          titleColor: errorColor,
+          iconColor: errorColor,
+          showArrow: true,
+          onTap: _confirmLogout,
         ),
       ],
     );
   }
 
   // ============================================================
-  // 공통 섹션 카드
+  // 15. 공통 섹션 카드
   // ============================================================
 
   Widget _buildSectionCard({
@@ -1041,38 +749,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }) {
     return Container(
       width: double.infinity,
-      padding:
-          const EdgeInsets.fromLTRB(
-        18,
-        18,
-        18,
-        8,
-      ),
-      decoration:
-          BoxDecoration(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
+      decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius:
-            BorderRadius.circular(
-          26,
-        ),
-        border: Border.all(
-          color:
-              const Color(
-            0xFFE4ECE9,
-          ),
-        ),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: const Color(0xFFE4ECE9)),
         boxShadow: [
           BoxShadow(
-            color:
-                Colors.black.withValues(
-              alpha: 0.025,
-            ),
+            color: Colors.black.withValues(alpha: 0.025),
             blurRadius: 18,
-            offset:
-                const Offset(
-              0,
-              7,
-            ),
+            offset: const Offset(0, 7),
           ),
         ],
       ),
@@ -1080,35 +766,21 @@ class _MyPageScreenState extends State<MyPageScreen> {
         children: [
           Row(
             children: [
-              _buildIconCircle(
-                icon,
-              ),
-
-              const SizedBox(
-                width: 12,
-              ),
-
+              _buildIconCircle(icon),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   title,
-                  style:
-                      const TextStyle(
+                  style: const TextStyle(
                     fontSize: 20,
-                    fontWeight:
-                        FontWeight
-                            .w900,
-                    color:
-                        darkColor,
+                    fontWeight: FontWeight.w900,
+                    color: darkColor,
                   ),
                 ),
               ),
             ],
           ),
-
-          const SizedBox(
-            height: 6,
-          ),
-
+          const SizedBox(height: 6),
           ...children,
         ],
       ),
@@ -1116,7 +788,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   // ============================================================
-  // 메뉴 Row
+  // 16. 공통 메뉴
   // ============================================================
 
   Widget _buildMenuRow({
@@ -1131,90 +803,49 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius:
-          BorderRadius.circular(
-        16,
-      ),
+      borderRadius: BorderRadius.circular(16),
       child: Padding(
-        padding:
-            const EdgeInsets.symmetric(
-          vertical: 13,
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 13),
         child: Row(
           children: [
-            _buildIconCircle(
-              icon,
-              iconColor:
-                  iconColor,
-              size: 42,
-            ),
-
-            const SizedBox(
-              width: 13,
-            ),
-
+            _buildIconCircle(icon, iconColor: iconColor, size: 42),
+            const SizedBox(width: 13),
             Expanded(
               child: Text(
                 title,
-                style:
-                    TextStyle(
+                style: TextStyle(
                   fontSize: 16,
-                  fontWeight:
-                      FontWeight.w700,
-                  color:
-                      titleColor ??
-                          darkColor,
+                  fontWeight: FontWeight.w700,
+                  color: titleColor ?? darkColor,
                 ),
               ),
             ),
-
             if (value != null) ...[
-              const SizedBox(
-                width: 10,
-              ),
-
+              const SizedBox(width: 10),
               Flexible(
                 child: Text(
                   value,
-                  textAlign:
-                      TextAlign.right,
+                  textAlign: TextAlign.right,
                   maxLines: 1,
-                  overflow:
-                      TextOverflow
-                          .ellipsis,
-                  style:
-                      TextStyle(
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
                     fontSize: 13.5,
-                    color: Colors
-                        .grey
-                        .shade600,
-                    fontWeight:
-                        FontWeight
-                            .w600,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ],
-
             if (customTrailing != null) ...[
-              const SizedBox(
-                width: 10,
-              ),
+              const SizedBox(width: 10),
               customTrailing,
             ],
-
             if (showArrow) ...[
-              const SizedBox(
-                width: 7,
-              ),
-
+              const SizedBox(width: 7),
               Icon(
-                Icons
-                    .chevron_right_rounded,
+                Icons.chevron_right_rounded,
                 size: 25,
-                color: Colors
-                    .grey
-                    .shade400,
+                color: Colors.grey.shade400,
               ),
             ],
           ],
@@ -1224,119 +855,66 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   // ============================================================
-  // 아이콘 원
+  // 17. 공통 아이콘
   // ============================================================
 
-  Widget _buildIconCircle(
-    IconData icon, {
-    Color? iconColor,
-    double size = 44,
-  }) {
+  Widget _buildIconCircle(IconData icon, {Color? iconColor, double size = 44}) {
     return Container(
       width: size,
       height: size,
-      decoration:
-          const BoxDecoration(
-        color:
-            Color(
-          0xFFE7FBF3,
-        ),
-        shape:
-            BoxShape.circle,
+      decoration: const BoxDecoration(
+        color: Color(0xFFE7FBF3),
+        shape: BoxShape.circle,
       ),
-      alignment:
-          Alignment.center,
-      child: Icon(
-        icon,
-        size:
-            size * 0.52,
-        color:
-            iconColor ??
-                primaryColor,
-      ),
+      alignment: Alignment.center,
+      child: Icon(icon, size: size * 0.52, color: iconColor ?? primaryColor),
     );
   }
 
   // ============================================================
-  // 구분선
+  // 18. 구분선
   // ============================================================
 
   Widget _buildDivider() {
-    return const Divider(
-      height: 1,
-      thickness: 1,
-      color:
-          Color(
-        0xFFEDF0EF,
-      ),
-    );
+    return const Divider(height: 1, thickness: 1, color: Color(0xFFEDF0EF));
   }
 
   // ============================================================
-  // 완료 상태
+  // 19. 검사 완료 상태
   // ============================================================
 
-  Widget _buildStatusChip(
-    bool completed,
-  ) {
+  Widget _buildStatusChip(bool completed) {
     return Container(
-      padding:
-          const EdgeInsets.symmetric(
-        horizontal: 13,
-        vertical: 7,
-      ),
-      decoration:
-          BoxDecoration(
-        color: completed
-            ? const Color(
-                0xFFE1FAF0,
-              )
-            : const Color(
-                0xFFF1F2F2,
-              ),
-        borderRadius:
-            BorderRadius.circular(
-          100,
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+      decoration: BoxDecoration(
+        color: completed ? const Color(0xFFE1FAF0) : const Color(0xFFF1F2F2),
+        borderRadius: BorderRadius.circular(100),
       ),
       child: Text(
-        completed
-            ? '완료'
-            : '미완료',
+        completed ? '완료' : '미완료',
         style: TextStyle(
           fontSize: 12.5,
-          fontWeight:
-              FontWeight.w800,
-          color: completed
-              ? primaryColor
-              : Colors
-                  .grey
-                  .shade600,
+          fontWeight: FontWeight.w800,
+          color: completed ? primaryColor : Colors.grey.shade600,
         ),
       ),
     );
   }
 
   // ============================================================
-  // 하단 메뉴
-  // 홈 화면의 NavigationBar와 동일한 구성
+  // 20. 하단 내비게이션
+  //
+  // 기존 '연습' -> 'AI 대화'
+  // 화면 이동 대상은 기존 구조 유지
   // ============================================================
 
   Widget _buildBottomNavigation() {
     return NavigationBar(
       height: 72,
-      backgroundColor:
-          Colors.white,
-      indicatorColor:
-          primaryColor.withValues(
-        alpha: 0.12,
-      ),
-
-      // 현재 화면은 MY
+      backgroundColor: Colors.white,
+      indicatorColor: primaryColor.withValues(alpha: 0.12),
       selectedIndex: 3,
-
-      onDestinationSelected:
-          (index) async {
+      onDestinationSelected: (index) async {
         switch (index) {
           // ----------------------------------------------------
           // 홈
@@ -1346,14 +924,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
             break;
 
           // ----------------------------------------------------
-          // 연습
+          // AI 대화
           // ----------------------------------------------------
           case 1:
             await Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (_) =>
-                    const ConversationTrainingScreen(),
+                builder: (_) => const ConversationTrainingScreen(),
               ),
             );
             break;
@@ -1364,10 +941,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           case 2:
             await Navigator.pushReplacement(
               context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    const RecordScreen(),
-              ),
+              MaterialPageRoute(builder: (_) => const RecordScreen()),
             );
             break;
 
@@ -1378,67 +952,29 @@ class _MyPageScreenState extends State<MyPageScreen> {
             return;
         }
       },
-
-      destinations:
-          const [
+      destinations: const [
         NavigationDestination(
-          icon:
-              Icon(
-            Icons.home_outlined,
-          ),
-          selectedIcon:
-              Icon(
-            Icons.home_rounded,
-            color:
-                primaryColor,
-          ),
-          label:
-              '홈',
+          icon: Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home_rounded, color: primaryColor),
+          label: '홈',
         ),
-
         NavigationDestination(
-          icon:
-              Icon(
-            Icons.menu_book_outlined,
+          icon: Icon(Icons.chat_bubble_outline_rounded),
+          selectedIcon: Icon(
+            Icons.chat_bubble_outline_rounded,
+            color: primaryColor,
           ),
-          selectedIcon:
-              Icon(
-            Icons.menu_book_rounded,
-            color:
-                primaryColor,
-          ),
-          label:
-              '연습',
+          label: '대화',
         ),
-
         NavigationDestination(
-          icon:
-              Icon(
-            Icons.bar_chart_rounded,
-          ),
-          selectedIcon:
-              Icon(
-            Icons.bar_chart_rounded,
-            color:
-                primaryColor,
-          ),
-          label:
-              '기록',
+          icon: Icon(Icons.bar_chart_rounded),
+          selectedIcon: Icon(Icons.bar_chart_rounded, color: primaryColor),
+          label: '기록',
         ),
-
         NavigationDestination(
-          icon:
-              Icon(
-            Icons.person_outline_rounded,
-          ),
-          selectedIcon:
-              Icon(
-            Icons.person_rounded,
-            color:
-                primaryColor,
-          ),
-          label:
-              'MY',
+          icon: Icon(Icons.person_outline_rounded),
+          selectedIcon: Icon(Icons.person_rounded, color: primaryColor),
+          label: 'MY',
         ),
       ],
     );
